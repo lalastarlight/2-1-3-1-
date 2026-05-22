@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>클라리온 — 유해도 분석기</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --surface2:#1a1a24; --border:#2a2a38;
+    --text:#e8e8f0; --text-muted:#6b6b80; --accent:#4f8ef7;
+    --safe:#22c55e; --caution:#84cc16; --bgrade:#eab308; --harmful:#f97316; --block:#ef4444;
+    --safe-bg:rgba(34,197,94,.08); --caution-bg:rgba(132,204,22,.08);
+    --bgrade-bg:rgba(234,179,8,.08); --harmful-bg:rgba(249,115,22,.08); --block-bg:rgba(239,68,68,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-weight:300;min-height:100vh}
+  header{border-bottom:1px solid var(--border);padding:28px 40px;display:flex;align-items:baseline;gap:16px}
+  .logo{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--accent)}
+  .logo-sub{font-size:12px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase}
+  main{max-width:860px;margin:0 auto;padding:48px 24px 80px}
+  .slabel{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+  input[type=text],input[type=password]{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;transition:border-color .2s}
+  input:focus{border-color:var(--accent)}
+  input::placeholder{color:var(--text-muted)}
+  .url-row{display:flex;gap:10px;margin-top:12px}
+  .url-row input{flex:1;font-family:'Noto Sans KR',sans-serif;font-size:14px}
+  button{cursor:pointer;border:none;border-radius:6px;font-family:'Space Mono',monospace;font-weight:700;transition:all .18s}
+  .btn-p{background:var(--accent);color:#fff;padding:12px 24px;font-size:13px;white-space:nowrap}
+  .btn-p:hover{background:#3a7de0}
+  .btn-p:disabled{background:var(--border);color:var(--text-muted);cursor:not-allowed}
+  #loading{display:none;text-align:center;padding:60px 0}
+  .spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ltext{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted);letter-spacing:1px}
+  #err{display:none;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:16px 20px;margin-bottom:24px;font-size:14px;color:#fca5a5}
+  #result{display:none}
+  .vmeta{display:flex;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:28px;align-items:flex-start}
+  .vthumb{width:140px;height:79px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--surface2)}
+  .vinfo{flex:1;min-width:0}
+  .vtitle{font-size:15px;font-weight:500;line-height:1.4;margin-bottom:6px}
+  .vch{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+  .vstats{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)}
+  .ocard{border-radius:10px;padding:28px 32px;margin-bottom:28px;display:flex;align-items:center;gap:24px;border:1px solid}
+  .obadge{font-family:'Space Mono',monospace;font-size:40px;font-weight:700;flex-shrink:0;width:60px;text-align:center}
+  .olabel{font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;opacity:.7}
+  .oname{font-size:26px;font-weight:700;margin-bottom:6px}
+  .odesc{font-size:13px;opacity:.85;line-height:1.6}
+  .igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+  @media(max-width:620px){.igrid{grid-template-columns:1fr}}
+  .icard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;border-top-width:3px}
+  .iname{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px}
+  .igrade{font-size:16px;font-weight:700;margin-bottom:8px}
+  .ikw{font-size:11px;color:var(--text-muted);line-height:1.7;margin-bottom:4px}
+  .icnt{font-family:'Space Mono',monospace;font-size:11px;opacity:.6}
+  .ssec{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:28px}
+  .stitle{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+  .srow{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .slbl{font-size:13px;width:52px;flex-shrink:0}
+  .sbg{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+  .sfill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+  .sval{font-family:'Space Mono',monospace;font-size:12px;width:36px;text-align:right;flex-shrink:0}
+  .rtog{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);background:none;padding:0;cursor:pointer;letter-spacing:1px;text-decoration:underline;display:block;margin-bottom:10px}
+  .rbox{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;margin-bottom:24px;line-height:1.7}
+  .leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}
+  .li{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted)}
+  .ld{width:8px;height:8px;border-radius:50%}
+  .g-safe{color:var(--safe)} .g-cau{color:var(--caution)} .g-brd{color:var(--bgrade)} .g-har{color:var(--harmful)} .g-blk{color:var(--block)}
+  .c-safe{border-top-color:var(--safe)} .c-cau{border-top-color:var(--caution)} .c-brd{border-top-color:var(--bgrade)} .c-har{border-top-color:var(--harmful)} .c-blk{border-top-color:var(--block)}
+  .o-safe{background:var(--safe-bg);border-color:rgba(34,197,94,.3);color:var(--safe)}
+  .o-cau{background:var(--caution-bg);border-color:rgba(132,204,22,.3);color:var(--caution)}
+  .o-brd{background:var(--bgrade-bg);border-color:rgba(234,179,8,.3);color:var(--bgrade)}
+  .o-har{background:var(--harmful-bg);border-color:rgba(249,115,22,.3);color:var(--harmful)}
+  .o-blk{background:var(--block-bg);border-color:rgba(239,68,68,.3);color:var(--block)}
+  .b-safe{background:var(--safe)} .b-cau{background:var(--caution)} .b-brd{background:var(--bgrade)} .b-har{background:var(--harmful)} .b-blk{background:var(--block)}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">CLARION</span>
+  <span class="logo-sub">콘텐츠 유해도 분석기</span>
+</header>
+<main>
+  <div style="margin-bottom:40px">
+    <div class="slabel">YouTube Data API 키</div>
+    <input type="password" id="yt-key" placeholder="AIzaSy..." autocomplete="off">
+    <div class="slabel" style="margin-top:20px">분석할 영상 URL</div>
+    <div class="url-row">
+      <input type="text" id="url-in" placeholder="https://www.youtube.com/watch?v=...">
+      <button class="btn-p" id="abtn" onclick="analyze()">분석 시작</button>
+    </div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--safe)"></div>안전 (0~20)</div>
+      <div class="li"><div class="ld" style="background:var(--caution)"></div>주의 (21~40)</div>
+      <div class="li"><div class="ld" style="background:var(--bgrade)"></div>경계 (41~60)</div>
+      <div class="li"><div class="ld" style="background:var(--harmful)"></div>유해 (61~80)</div>
+      <div class="li"><div class="ld" style="background:var(--block)"></div>차단 (81~100)</div>
+    </div>
+  </div>
+  <div id="err"></div>
+  <div id="loading"><div class="spinner"></div><div class="ltext" id="ltxt">데이터 수집 중...</div></div>
+  <div id="result">
+    <div class="vmeta">
+      <img class="vthumb" id="rthumb" src="" alt="">
+      <div class="vinfo">
+        <div class="vtitle" id="rtitle"></div>
+        <div class="vch" id="rch"></div>
+        <div class="vstats" id="rstats"></div>
+      </div>
+    </div>
+    <div class="ocard" id="ocard">
+      <div class="obadge" id="obadge"></div>
+      <div>
+        <div class="olabel">종합 유해도 등급</div>
+        <div class="oname" id="oname"></div>
+        <div class="odesc" id="odesc"></div>
+      </div>
+    </div>
+    <div class="igrid" id="igrid"></div>
+    <div class="ssec">
+      <div class="stitle">항목별 유해도 점수 (100점 기준)</div>
+      <div id="sbars"></div>
+    </div>
+    <button class="rtog" onclick="toggleRaw()">▶ 수집된 원본 데이터 보기</button>
+    <div class="rbox" id="rbox"></div>
+  </div>
+</main>
+<script>
+const DICT={
+  욕설:{w:1.0,words:['시발','씨발','씨팔','ㅅㅂ','ㅆㅂ','병신','빙신','ㅂㅅ','지랄','ㅈㄹ','개새끼','개새','ㄱㅅㄲ','미친','미친놈','미친년','ㅁㅊ','찐따','존나','졷나','ㅈㄴ','뒤져','뒤지다','개소리','새끼','엿먹어','엿같은','멍청이','호로자식','꺼져','닥쳐','꼴통']},
+  성적:{w:3.0,words:['야동','야한','19금','성인물','음란','섹스','섹시','포르노','자위','강간','성폭행','성추행','성희롱','원나잇','원나이트','야사','야설','에로','에로틱','관능','야릇한','야시시','선정적','가슴','유두','음부','성기','노출','속옷','비키니','몸선','글래머','체위','오르가즘','성관계']},
+  폭력:{w:2.0,words:['살인','살해','살인마','연쇄살인','폭행','폭력','구타','흉기','총기','권총','피범벅','유혈','자살','자해','죽고싶다','죽여','죽일','죽이다','죽였다','테러','폭탄','고문','납치','감금','학대','아동학대','가정폭력','혐오','혐오발언','인종차별','성차별']}
+};
+const GRADES=[
+  {name:'안전',cls:'safe',bc:'b-safe',oc:'o-safe',cc:'c-safe',gc:'g-safe',badge:'✓',min:0,max:20},
+  {name:'주의',cls:'cau', bc:'b-cau', oc:'o-cau', cc:'c-cau', gc:'g-cau', badge:'!',min:21,max:40},
+  {name:'경계',cls:'brd', bc:'b-brd', oc:'o-brd', cc:'c-brd', gc:'g-brd', badge:'△',min:41,max:60},
+  {name:'유해',cls:'har', bc:'b-har', oc:'o-har', cc:'c-har', gc:'g-har', badge:'✕',min:61,max:80},
+  {name:'차단',cls:'blk', bc:'b-blk', oc:'o-blk', cc:'c-blk', gc:'g-blk', badge:'✕',min:81,max:100},
+];
+function s2g(s){return GRADES.find(g=>s>=g.min&&s<=g.max)||GRADES[0]}
+function analyzeText(text){
+  if(!text)return{score:0,hits:{}};
+  const lower=text.toLowerCase();
+  const hits={};
+  let twc=0;
+  const tlen=Math.max(text.length/4,1);
+  for(const[cat,{w,words}]of Object.entries(DICT)){
+    const found=[];
+    for(const wd of words){
+      const re=new RegExp(wd.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
+      const m=(lower.match(re)||[]).length;
+      if(m>0){found.push({word:wd,count:m});twc+=m*w;}
+    }
+    if(found.length>0)hits[cat]=found;
+  }
+  const score=Math.min(Math.round((twc/tlen)*400),100);
+  return{score,hits};
+}
+function analyzeComments(comments){
+  if(!comments||!comments.length)return{score:0,hits:{}};
+  const res=comments.map(c=>analyzeText(c));
+  const scores=res.map(r=>r.score);
+  const avg=scores.reduce((a,b)=>a+b,0)/scores.length;
+  const max=Math.max(...scores);
+  const score=Math.round(avg*0.6+max*0.4);
+  const mh={};
+  for(const r of res){
+    for(const[cat,words]of Object.entries(r.hits)){
+      if(!mh[cat])mh[cat]=[];
+      for(const w of words){
+        const ex=mh[cat].find(x=>x.word===w.word);
+        if(ex)ex.count+=w.count; else mh[cat].push({...w});
+      }
+    }
+  }
+  return{score,hits:mh};
+}
+function overallScore(t,d,c){return Math.round(t*0.25+d*0.35+c*0.40)}
+function hitsStr(hits){
+  const p=[];
+  for(const[cat,words]of Object.entries(hits)){
+    const top=words.sort((a,b)=>b.count-a.count).slice(0,3);
+    p.push('['+cat+'] '+top.map(w=>'"'+w.word+'"('+w.count+'회)').join(', '));
+  }
+  return p.length>0?p.join(' / '):'감지된 키워드 없음';
+}
+function getVid(url){
+  const ps=[/(?:v=)([a-zA-Z0-9_-]{11})/,/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,/(?:embed\/)([a-zA-Z0-9_-]{11})/];
+  for(const p of ps){const m=url.match(p);if(m)return m[1];}
+  return null;
+}
+async function fetchYT(vid,key){
+  const vr=await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id='+vid+'&key='+key);
+  const vd=await vr.json();
+  if(vd.error)throw new Error('YouTube API 오류: '+vd.error.message);
+  if(!vd.items||!vd.items.length)throw new Error('영상을 찾을 수 없습니다.');
+  const it=vd.items[0];const sn=it.snippet;const st=it.statistics;
+  let comments=[];
+  try{
+    const cr=await fetch('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId='+vid+'&maxResults=50&order=relevance&key='+key);
+    const cd=await cr.json();
+    if(cd.items)comments=cd.items.map(c=>c.snippet.topLevelComment.snippet.textDisplay);
+  }catch(e){}
+  return{
+    title:sn.title||'',
+    description:(sn.description||'').slice(0,1000),
+    channel:sn.channelTitle||'',
+    publishedAt:(sn.publishedAt||'').slice(0,10),
+    viewCount:parseInt(st?.viewCount||0).toLocaleString(),
+    likeCount:parseInt(st?.likeCount||0).toLocaleString(),
+    commentCount:parseInt(st?.commentCount||0).toLocaleString(),
+    thumb:sn.thumbnails?.medium?.url||sn.thumbnails?.default?.url||'',
+    comments
+  };
+}
+function showErr(msg){const e=document.getElementById('err');e.textContent=msg;e.style.display='block'}
+function hideErr(){document.getElementById('err').style.display='none'}
+function setLoad(show,txt){
+  document.getElementById('loading').style.display=show?'block':'none';
+  if(txt)document.getElementById('ltxt').textContent=txt;
+}
+function render(yt,tr,dr,cr){
+  const ts=tr.score,ds=dr.score,cs=cr.score,tot=overallScore(ts,ds,cs);
+  const tg=s2g(ts),dg=s2g(ds),cg=s2g(cs),og=s2g(tot);
+  const buildDesc=()=>{
+    const p=[];
+    if(Object.keys(tr.hits).length>0)p.push('제목에서 '+hitsStr(tr.hits));
+    if(Object.keys(dr.hits).length>0)p.push('설명란에서 '+hitsStr(dr.hits));
+    if(Object.keys(cr.hits).length>0)p.push('댓글에서 '+hitsStr(cr.hits));
+    return p.length?p.join(' / ')+' 이(가) 감지되었습니다.':'분석된 텍스트에서 유해 키워드가 감지되지 않았습니다.';
+  };
+  document.getElementById('rthumb').src=yt.thumb;
+  document.getElementById('rtitle').textContent=yt.title;
+  document.getElementById('rch').textContent=yt.channel+(yt.publishedAt?'  ·  '+yt.publishedAt:'');
+  document.getElementById('rstats').textContent='조회수 '+yt.viewCount+'  ·  좋아요 '+yt.likeCount+'  ·  댓글 '+yt.commentCount;
+  const oc=document.getElementById('ocard');
+  oc.className='ocard '+og.oc;
+  document.getElementById('obadge').textContent=og.badge;
+  document.getElementById('oname').textContent=og.name;
+  document.getElementById('odesc').textContent=buildDesc();
+  const igrid=document.getElementById('igrid');
+  igrid.innerHTML='';
+  [{label:'제목',g:tg,s:ts,h:tr.hits,n:1},{label:'설명',g:dg,s:ds,h:dr.hits,n:1},{label:'댓글',g:cg,s:cs,h:cr.hits,n:yt.comments.length}].forEach(item=>{
+    const d=document.createElement('div');
+    d.className='icard '+item.g.cc;
+    d.innerHTML='<div class="iname">'+item.label+'</div>'
+      +'<div class="igrade '+item.g.gc+'">'+item.g.name+' ('+item.s+'점)</div>'
+      +'<div class="ikw">'+hitsStr(item.h)+'</div>'
+      +(item.label==='댓글'?'<div class="icnt">분석 댓글 수: '+item.n+'개</div>':'');
+    igrid.appendChild(d);
+  });
+  const sb=document.getElementById('sbars');
+  sb.innerHTML='';
+  [{label:'제목',s:ts,g:tg},{label:'설명',s:ds,g:dg},{label:'댓글',s:cs,g:cg},{label:'종합',s:tot,g:og}].forEach(si=>{
+    const r=document.createElement('div');
+    r.className='srow';
+    r.innerHTML='<div class="slbl">'+si.label+'</div>'
+      +'<div class="sbg"><div class="sfill '+si.g.bc+'" style="width:0%" data-t="'+si.s+'%"></div></div>'
+      +'<div class="sval '+si.g.gc+'">'+si.s+'</div>';
+    sb.appendChild(r);
+  });
+  setTimeout(()=>{document.querySelectorAll('.sfill').forEach(b=>{b.style.width=b.dataset.t;});},80);
+  document.getElementById('rbox').textContent='[제목]\n'+yt.title+'\n\n[설명]\n'+yt.description+'\n\n[수집된 댓글 '+yt.comments.length+'개]\n'+yt.comments.map((c,i)=>(i+1)+'. '+c).join('\n');
+  document.getElementById('result').style.display='block';
+}
+function toggleRaw(){
+  const b=document.getElementById('rbox');
+  const btn=document.querySelector('.rtog');
+  if(b.style.display==='block'){b.style.display='none';btn.textContent='▶ 수집된 원본 데이터 보기';}
+  else{b.style.display='block';btn.textContent='▼ 원본 데이터 닫기';}
+}
+async function analyze(){
+  hideErr();
+  document.getElementById('result').style.display='none';
+  const key=document.getElementById('yt-key').value.trim();
+  const url=document.getElementById('url-in').value.trim();
+  if(!key){showErr('YouTube Data API 키를 입력해주세요.');return;}
+  if(!url){showErr('유튜브 URL을 입력해주세요.');return;}
+  const vid=getVid(url);
+  if(!vid){showErr('올바른 유튜브 URL 형식이 아닙니다.');return;}
+  const btn=document.getElementById('abtn');
+  btn.disabled=true;
+  try{
+    setLoad(true,'YouTube에서 데이터 수집 중...');
+    const yt=await fetchYT(vid,key);
+    setLoad(true,'키워드 분석 중...');
+    const tr=analyzeText(yt.title);
+    const dr=analyzeText(yt.description);
+    const cr=analyzeComments(yt.comments);
+    setLoad(false);
+    render(yt,tr,dr,cr);
+  }catch(e){
+    setLoad(false);
+    showErr(e.message||'오류가 발생했습니다. 다시 시도해주세요.');
+  }finally{btn.disabled=false;}
+}
+document.getElementById('url-in').addEventListener('keydown',e=>{if(e.key==='Enter')analyze();});
+</script>
+</body>
+</html>
