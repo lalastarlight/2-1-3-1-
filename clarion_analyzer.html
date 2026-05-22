@@ -290,10 +290,27 @@ async function analyze(){
     const cr=analyzeComments(yt.comments);
     setLoad(false);
     render(yt,tr,dr,cr);
+    // 구글 시트 자동 저장
+    const tot=overallScore(tr.score,dr.score,cr.score);
+    const og=s2g(tot);
+    saveToSheet(url,tr.score,dr.score,cr.score,tot,og.name);
   }catch(e){
     setLoad(false);
     showErr(e.message||'오류가 발생했습니다. 다시 시도해주세요.');
   }finally{btn.disabled=false;}
+}
+const SHEET_URL='https://script.google.com/macros/s/AKfycbwPSIF-h9BHCrtIBIivnAHy4BKhEu3IzjdwTHXH9T4vZiuvPrUNu7nueNQW3pMjwD5QHg/exec';
+async function saveToSheet(url,ts,ds,cs,tot,grade){
+  const now=new Date();
+  const date=now.getFullYear()+'-'+(now.getMonth()+1).toString().padStart(2,'0')+'-'+now.getDate().toString().padStart(2,'0');
+  try{
+    await fetch(SHEET_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({date,url,titleScore:ts,descScore:ds,commentScore:cs,totalScore:tot,grade})
+    });
+  }catch(e){console.warn('시트 저장 실패:',e);}
 }
 document.getElementById('url-in').addEventListener('keydown',e=>{if(e.key==='Enter')analyze();});
 </script>
